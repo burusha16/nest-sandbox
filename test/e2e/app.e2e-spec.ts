@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 
-describe('AppController (e2e)', () => {
+describe('E2E - AppController', () => {
   let app;
 
   beforeEach(async () => {

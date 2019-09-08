@@ -7,6 +7,7 @@ export const createCatDtoMock = {
 export const updateCatDtoMock = {
   name: 'timoshka',
   age: 1,
+  breed: 'russian'
 };
 
 export const oneCatResultMock = {

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { CreateCatDto } from './shared/dto/create-cat.dto';
@@ -9,7 +9,6 @@ import { ICat } from './shared/interfaces/cat.interface';
 @Injectable()
 export class CatsService implements ICatService {
   constructor(@Inject('CATS_STORE') private store: Array<ICat>) {
-
   }
 
   public add(cat: CreateCatDto): Observable<number> {
@@ -18,7 +17,8 @@ export class CatsService implements ICatService {
   }
 
   public findOne(id: string): Observable<ICat | undefined> {
-    return of({ ...this.store[parseInt(id, 10)] });
+    this.checkCatExistAndThrowError(id);
+    return of({ ...this.getItem(id) });
   }
 
   public findAll(): Observable<ICat[]> {
@@ -26,13 +26,29 @@ export class CatsService implements ICatService {
   }
 
   public delete(id: string): void {
+    this.checkCatExistAndThrowError(id);
     delete this.store[parseInt(id, 10)];
   }
 
   public update(id: string, cat: UpdateCatDto): void {
-    this.store[parseInt(id, 10)] = {
-      ...this.store[parseInt(id, 10)],
+    this.checkCatExistAndThrowError(id);
+    this.setItem(id, {
+      ...this.getItem(id),
       ...cat,
-    };
+    });
+  }
+
+  private checkCatExistAndThrowError(id): void {
+    if (!this.getItem(id)) {
+      throw new NotFoundException();
+    }
+  }
+
+  private getItem(id: string): ICat {
+    return this.store[parseInt(id, 10)];
+  }
+
+  private setItem(id: string, data: ICat): void {
+    this.store[parseInt(id, 10)] = data;
   }
 }
