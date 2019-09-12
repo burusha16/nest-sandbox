@@ -7,11 +7,11 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import { CreateCatDto } from './shared/dto/create-cat.dto';
 import { UpdateCatDto } from './shared/dto/update-cat.dto';
 import { ICatService } from './shared/interfaces/cat-service.interface';
-import { ICat } from './shared/interfaces/cat.interface';
+import { ICat, ICatDocument } from './shared/interfaces/cat.interface';
 
 @Injectable()
 export class CatsService implements ICatService {
-  constructor(@InjectModel('Cat') private readonly catModel: Model<ICat>) {
+  constructor(@InjectModel('Cat') private readonly catModel: Model<ICatDocument>) {
   }
 
   public add(cat: CreateCatDto): Observable<string> {
@@ -23,7 +23,7 @@ export class CatsService implements ICatService {
       );
   }
 
-  public findOne(id: string): Observable<ICat | null> {
+  public findOne(id: string): Observable<ICatDocument | null> {
     return fromPromise(this.catModel.findById(id).exec())
       .pipe(
         catchError(err => throwError(new InternalServerErrorException('error on save to DB'))),
@@ -31,7 +31,7 @@ export class CatsService implements ICatService {
       );
   }
 
-  public findAll(): Observable<ICat[]> {
+  public findAll(): Observable<ICatDocument[]> {
     return fromPromise(this.catModel.find().exec())
       .pipe(
         catchError(err => throwError(new InternalServerErrorException('error on get from DB')))

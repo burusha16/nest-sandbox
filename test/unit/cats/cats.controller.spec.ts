@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Observable } from 'rxjs';
 import { CatsController } from '../../../src/pages/cats/cats.controller';
 import { CatsService } from '../../../src/pages/cats/cats.service';
-import { ICat } from '../../../src/pages/cats/shared/interfaces/cat.interface';
+import { ICat, ICatDocument } from '../../../src/pages/cats/shared/interfaces/cat.interface';
 import { CatsMockService } from '../../mocks/cats/cats.service.mock';
 import { allCatsResultMock, createCatDtoMock, oneCatResultMock, testMongoId } from '../../mocks/cats/contants';
 

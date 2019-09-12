@@ -4,7 +4,7 @@ import mockingoose from 'mockingoose';
 import * as mongoose from 'mongoose';
 import { CatsService } from '../../../src/pages/cats/cats.service';
 import { CreateCatDto } from '../../../src/pages/cats/shared/dto/create-cat.dto';
-import { ICat } from '../../../src/pages/cats/shared/interfaces/cat.interface';
+import { ICatDocument } from '../../../src/pages/cats/shared/interfaces/cat.interface';
 import { CATS_SCHEMA } from '../../../src/pages/cats/shared/schemas/cat.schema';
 import { allCatsResultMock, createCatDtoMock, testMongoId, updateCatDtoMock } from '../../mocks/cats/contants';
 import { ModelExecRejectMock } from '../../mocks/mongoose/model-exec-reject.mock';
@@ -14,7 +14,7 @@ import { expectObservableIsEMPTY, expectObservableThrowErr } from '../../utils/e
 describe('CatsService', () => {
   let service: CatsService;
   const createData: CreateCatDto = createCatDtoMock;
-  let catModel: mongoose.Model<ICat>;
+  let catModel: mongoose.Model<ICatDocument>;
 
   beforeEach(async () => {
     mockingoose.resetAll();
