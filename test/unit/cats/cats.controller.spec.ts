@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Observable } from 'rxjs';
+import { IdModel } from '../../../src/core/models/id.model';
 import { CatsController } from '../../../src/pages/cats/cats.controller';
 import { CatsService } from '../../../src/pages/cats/cats.service';
-import { ICat, ICatDocument } from '../../../src/pages/cats/shared/interfaces/cat.interface';
+import { ICat } from '../../../src/pages/cats/shared/interfaces/cat.interface';
 import { CatsMockService } from '../../mocks/cats/cats.service.mock';
 import { allCatsResultMock, createCatDtoMock, oneCatResultMock, testMongoId } from '../../mocks/cats/contants';
 
@@ -38,10 +39,10 @@ describe('Cats Controller', () => {
   });
 
   it(`should return observable with id: ${testMongoId} on add new cat`, (done) => {
-    const result: Observable<string> = controller.create(createCatDtoMock);
+    const result: Observable<IdModel> = controller.create(createCatDtoMock);
     expect(result).toBeInstanceOf(Observable);
     result.subscribe(val => {
-      expect(val).toEqual(testMongoId);
+      expect(val).toEqual(new IdModel(testMongoId));
       done();
     });
   });

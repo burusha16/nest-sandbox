@@ -2,6 +2,7 @@ import { InternalServerErrorException, NotFoundException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing';
 import mockingoose from 'mockingoose';
 import * as mongoose from 'mongoose';
+import { IdModel } from '../../../src/core/models/id.model';
 import { CatsService } from '../../../src/pages/cats/cats.service';
 import { CreateCatDto } from '../../../src/pages/cats/shared/dto/create-cat.dto';
 import { ICatDocument } from '../../../src/pages/cats/shared/interfaces/cat.interface';
@@ -46,7 +47,7 @@ describe('CatsService', () => {
     jest.spyOn(catModel.prototype, 'save').mockImplementationOnce(() => Promise.resolve({id: testMongoId}));
     const result = service.add(createData);
     result.subscribe(val => {
-      expect(val).toEqual(testMongoId);
+      expect(val).toEqual(new IdModel(testMongoId));
       done();
     });
   });

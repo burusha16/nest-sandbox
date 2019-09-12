@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, UsePipes } from '@nestjs/common';
 import { ApiCreatedResponse, ApiImplicitParam, ApiOkResponse, ApiUseTags } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
+import { IdModel } from '../../core/models/id.model';
 import { DtoValidationPipe } from '../../core/pipes/dto-validation.pipe';
 import { ValidateMongoIdPipe } from '../../core/pipes/validate-mongo-id.pipe';
 import { CatsService } from './cats.service';
@@ -15,9 +16,9 @@ export class CatsController {
   }
 
   @Post()
-  @ApiCreatedResponse({ description: 'Return string with id(parsed ObjectId) of created cat', type: String })
+  @ApiCreatedResponse({ description: 'Return object with id of created cat', type: IdModel })
   @UsePipes(DtoValidationPipe)
-  public create(@Body() createCatDto: CreateCatDto): Observable<string> {
+  public create(@Body() createCatDto: CreateCatDto): Observable<IdModel> {
     return this.catsService.add(createCatDto);
   }
 

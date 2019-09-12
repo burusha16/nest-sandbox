@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { EMPTY, Observable, of, throwError } from 'rxjs';
 import { fromPromise } from 'rxjs/internal-compatibility';
 import { catchError, map, switchMap } from 'rxjs/operators';
+import { IdModel } from '../../core/models/id.model';
 import { CreateCatDto } from './shared/dto/create-cat.dto';
 import { UpdateCatDto } from './shared/dto/update-cat.dto';
 import { ICatService } from './shared/interfaces/cat-service.interface';
@@ -14,12 +15,12 @@ export class CatsService implements ICatService {
   constructor(@InjectModel('Cat') private readonly catModel: Model<ICatDocument>) {
   }
 
-  public add(cat: CreateCatDto): Observable<string> {
+  public add(cat: CreateCatDto): Observable<IdModel> {
     const newCatModel = new this.catModel(cat);
     return fromPromise(newCatModel.save())
       .pipe(
         catchError(err => throwError(new InternalServerErrorException('error on add to DB'))),
-        map(model => model.id)
+        map(model => new IdModel(model.id))
       );
   }
 

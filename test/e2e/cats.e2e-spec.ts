@@ -49,8 +49,8 @@ describe('E2E - CatsController', () => {
         .expect(HttpStatus.CREATED)
         .then(res => {
           const idLength = 24;
-          expect(res.text.length).toEqual(idLength);
-          id = res.text;
+          expect(res.body._id.length).toEqual(idLength);
+          id = res.body._id;
           done();
         }),
     );
@@ -58,7 +58,7 @@ describe('E2E - CatsController', () => {
     it(`should return status 200, created cat info`, () =>
       testRequest(app.getHttpServer())
         .get('/cats/' + id)
-        .expect(HttpStatus.OK, { ...createCatDtoMock, _id: id })
+        .expect(HttpStatus.OK, { ...createCatDtoMock, _id: id }),
     );
 
     it(`should return status 200 and cats list`, () =>
@@ -109,26 +109,26 @@ describe('E2E - CatsController', () => {
     it(`should return status 400 on get with invalid id`, () =>
       testRequest(app.getHttpServer())
         .get('/cats/-1')
-        .expect(HttpStatus.BAD_REQUEST)
+        .expect(HttpStatus.BAD_REQUEST),
     );
 
     it('should return status 404 on delete cat which not exist', () =>
       testRequest(app.getHttpServer())
         .delete('/cats/11111111af4818325f87838d')
-        .expect(HttpStatus.NOT_FOUND)
+        .expect(HttpStatus.NOT_FOUND),
     );
 
     it('should return status 400 on delete with invalid id', () =>
       testRequest(app.getHttpServer())
         .delete('/cats/-1')
-        .expect(HttpStatus.BAD_REQUEST)
+        .expect(HttpStatus.BAD_REQUEST),
     );
 
     it(`should return status 404 update cat which not exist`, () =>
       testRequest(app.getHttpServer())
         .put('/cats/11111111af4818325f87838d')
         .send(updateCatDtoMock)
-        .expect(HttpStatus.NOT_FOUND)
+        .expect(HttpStatus.NOT_FOUND),
     );
 
     it(`should return status 400 on update with invalid id`, () =>
@@ -215,7 +215,7 @@ describe('E2E - CatsController', () => {
       testRequest(app.getHttpServer())
         .post('/cats')
         .send(createCatDtoMock)
-        .then(res => id = res.text)
+        .then(res => id = res.body._id),
     );
 
     it('should return 400 on update request with empty body', () =>
