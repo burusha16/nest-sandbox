@@ -4,13 +4,13 @@ import { UpdateCatDto } from '../dto/update-cat.dto';
 import { ICat } from './cat.interface';
 
 export interface ICatService {
-  add(cat: CreateCatDto): Observable<number>;
+  add(cat: CreateCatDto): Observable<string>;
 
   findOne(id: string): Observable<ICat | undefined>;
 
   findAll(): Observable<ICat[]>;
 
-  delete(id: string): void;
+  delete(id: string): Observable<void>;
 
-  update(id: string, cat: UpdateCatDto): void;
+  update(id: string, cat: UpdateCatDto): Observable<void>;
 }

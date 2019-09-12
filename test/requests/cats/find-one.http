@@ -1,0 +1,4 @@
+GET http://localhost:3000/cats/5d79608c48804f12c59edfc4
+Content-Type: application/json
+
+###

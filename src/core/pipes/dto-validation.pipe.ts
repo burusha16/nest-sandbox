@@ -1,4 +1,4 @@
-import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform, Type } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 
@@ -17,9 +17,10 @@ export class DtoValidationPipe implements PipeTransform<any> {
     }
     return value;
   }
-
-  private toValidate(metatype: Function): boolean {
-    const types: Function[] = [String, Boolean, Number, Array, Object];
+  // tslint:disable-next-line:no-any
+  private toValidate(metatype: Type<any>): boolean {
+    // tslint:disable-next-line:no-any
+    const types: Type<any>[] = [String, Boolean, Number, Array, Object];
     return !types.includes(metatype);
   }
 }

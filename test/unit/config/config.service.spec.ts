@@ -26,10 +26,8 @@ describe('ConfigService', () => {
     expect(service.get('DATABASE_PASSWORD')).toEqual('catstestpass');
   });
 
-  it('should return dbConfig', () => {
-    expect(service.dbConfig).toEqual({
-      user: 'catstest',
-      password: 'catstestpass'
-    });
+  it('should return dbUri', () => {
+    const url = 'mongodb://catstest:catstestpass@127.0.0.1:27017/cats';
+    expect(service.dbUri).toEqual(url);
   });
 });

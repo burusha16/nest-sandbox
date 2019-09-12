@@ -1,6 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { EMPTY, Observable, of, throwError } from 'rxjs';
+import { fromPromise } from 'rxjs/internal-compatibility';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { CreateCatDto } from './shared/dto/create-cat.dto';
 import { UpdateCatDto } from './shared/dto/update-cat.dto';
 import { ICatService } from './shared/interfaces/cat-service.interface';
@@ -8,47 +11,46 @@ import { ICat } from './shared/interfaces/cat.interface';
 
 @Injectable()
 export class CatsService implements ICatService {
-  constructor(@Inject('CATS_STORE') private store: Array<ICat>) {
+  constructor(@InjectModel('Cat') private readonly catModel: Model<ICat>) {
   }
 
-  public add(cat: CreateCatDto): Observable<number> {
-    return of(this.store.length)
-      .pipe(tap(id => this.store.push({ ...cat, id })));
+  public add(cat: CreateCatDto): Observable<string> {
+    const newCatModel = new this.catModel(cat);
+    return fromPromise(newCatModel.save())
+      .pipe(
+        catchError(err => throwError(new InternalServerErrorException('error on add to DB'))),
+        map(model => model.id)
+      );
   }
 
-  public findOne(id: string): Observable<ICat | undefined> {
-    this.checkCatExistAndThrowError(id);
-    return of({ ...this.getItem(id) });
+  public findOne(id: string): Observable<ICat | null> {
+    return fromPromise(this.catModel.findById(id).exec())
+      .pipe(
+        catchError(err => throwError(new InternalServerErrorException('error on save to DB'))),
+        switchMap(val => val === null ? throwError(new NotFoundException()) : of(val)),
+      );
   }
 
   public findAll(): Observable<ICat[]> {
-    return of(this.store.filter(v => v));
+    return fromPromise(this.catModel.find().exec())
+      .pipe(
+        catchError(err => throwError(new InternalServerErrorException('error on get from DB')))
+      );
   }
 
-  public delete(id: string): void {
-    this.checkCatExistAndThrowError(id);
-    delete this.store[parseInt(id, 10)];
+  public delete(id: string): Observable<void> {
+    return fromPromise(this.catModel.findByIdAndRemove(id).exec())
+      .pipe(
+        catchError(err => throwError(new InternalServerErrorException('error on delete from DB'))),
+        switchMap(val => val === null ? throwError(new NotFoundException()) : EMPTY)
+      );
   }
 
-  public update(id: string, cat: UpdateCatDto): void {
-    this.checkCatExistAndThrowError(id);
-    this.setItem(id, {
-      ...this.getItem(id),
-      ...cat,
-    });
-  }
-
-  private checkCatExistAndThrowError(id): void {
-    if (!this.getItem(id)) {
-      throw new NotFoundException();
-    }
-  }
-
-  private getItem(id: string): ICat {
-    return this.store[parseInt(id, 10)];
-  }
-
-  private setItem(id: string, data: ICat): void {
-    this.store[parseInt(id, 10)] = data;
+  public update(id: string, cat: UpdateCatDto): Observable<void> {
+    return fromPromise(this.catModel.findByIdAndUpdate(id, cat).exec())
+      .pipe(
+        catchError(err => throwError(new InternalServerErrorException('error on update DB item'))),
+        switchMap(val => val === null ? throwError(new NotFoundException()) : EMPTY)
+      );
   }
 }

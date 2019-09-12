@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+  mongodb-test:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - APP_MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_ROOT_USER=${MONGO_ROOT_USERNAME}
+      - MONGO_ROOT_PASS=${MONGO_ROOT_PASSWORD}
+      - APP_MONGO_USER=${APP_MONGO_USER}
+      - APP_MONGO_PASS=${APP_MONGO_PASS}
+      - APP_MONGO_DB=${APP_MONGO_DB}
+    ports:
+      - 27017:27017
+    volumes:
+      - "./build/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro"

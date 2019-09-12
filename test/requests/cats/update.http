@@ -1,0 +1,9 @@
+PUT http://localhost:3000/cats/-1
+Content-Type: application/json
+
+{
+  "name": "ilnur",
+  "age": 26,
+  "breed": "tatarin"
+}
+###

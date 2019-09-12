@@ -1,85 +1,141 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
+import * as mongoose from 'mongoose';
 import * as testRequest from 'supertest';
+import { ConfigService } from '../../src/config/config.service';
+import { mongooseConfigProvider } from '../../src/core/database/database.providers';
 import { CatsModule } from '../../src/pages/cats/cats.module';
 import { createCatDtoMock, updateCatDtoMock } from '../mocks/cats/contants';
 
+process.env.NODE_ENV = 'test';
+
 describe('E2E - CatsController', () => {
   let app!: INestApplication;
-  let store = [];
+  let id!: string;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [CatsModule],
+      imports: [
+        CatsModule,
+        MongooseModule.forRootAsync(mongooseConfigProvider),
+      ],
     })
-      .overrideProvider('CATS_STORE')
-      .useValue(store)
       .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
   });
 
+  afterAll(async () => {
+    await app.close();
+  });
+
   it('should be defined', () => {
     expect(app).toBeDefined();
   });
 
-  describe('Loop: create, get one, get all, update, delete', () => {
-    it(`should return status 201 and id: 1 on add new cat`, () =>
+  describe('Loop: create, get one, get all, update, delete, get one, get all', () => {
+    beforeAll(async () => {
+      const configService = new ConfigService(`./environment/test.env`);
+      await mongoose.connect(configService.dbUri, { useNewUrlParser: true });
+      await mongoose.connection.dropCollection('cats');
+    });
+
+    it(`should return status 201 and id: 1 on add new cat`, (done) =>
       testRequest(app.getHttpServer())
         .post('/cats')
         .send(createCatDtoMock)
-        .expect(HttpStatus.CREATED, '0'),
+        .expect(HttpStatus.CREATED)
+        .then(res => {
+          const idLength = 24;
+          expect(res.text.length).toEqual(idLength);
+          id = res.text;
+          done();
+        }),
     );
 
-    it(`should return status 200 cat with id 0`, () =>
+    it(`should return status 200, created cat info`, () =>
       testRequest(app.getHttpServer())
-        .get('/cats/0')
-        .expect(HttpStatus.OK, { ...createCatDtoMock, id: 0 }),
+        .get('/cats/' + id)
+        .expect(HttpStatus.OK, { ...createCatDtoMock, _id: id })
     );
 
     it(`should return status 200 and cats list`, () =>
       testRequest(app.getHttpServer())
         .get('/cats')
-        .expect(HttpStatus.OK, [{ ...createCatDtoMock, id: 0 }]),
+        .expect(HttpStatus.OK, [{ ...createCatDtoMock, _id: id }]),
     );
 
-    it(`should return status 200 and cat with id 0`, () =>
+    it(`should return status 200 on updating cat`, () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send(updateCatDtoMock)
-        .expect(HttpStatus.OK, {})
-        .then(() => {
-          expect(store[0]).toEqual({ ...createCatDtoMock, ...updateCatDtoMock, id: 0 });
-        }),
+        .expect(HttpStatus.OK, {}),
     );
 
-    it(`should return status 200 and delete cat with id 0`, () =>
+    it(`should return status 200 and updated cat data`, () =>
       testRequest(app.getHttpServer())
-        .delete('/cats/0')
-        .expect(HttpStatus.OK, {})
-        .then(() => expect(store[0]).toEqual(undefined)),
+        .get('/cats/' + id)
+        .expect(HttpStatus.OK, { ...createCatDtoMock, ...updateCatDtoMock, _id: id }),
+    );
+
+    it(`should return status 200 on delete cat`, () =>
+      testRequest(app.getHttpServer())
+        .delete('/cats/' + id)
+        .expect(HttpStatus.OK),
+    );
+
+    it(`should return status 404 for deleted cat`, () =>
+      testRequest(app.getHttpServer())
+        .get('/cats/' + id)
+        .expect(HttpStatus.NOT_FOUND),
+    );
+
+    it(`should return status 200, empty cats list`, () =>
+      testRequest(app.getHttpServer())
+        .get('/cats')
+        .expect(HttpStatus.OK, []),
     );
   });
 
-  describe('Cat not exist in store', () => {
-    it(`should return status 404 update cat which not exist`, () =>
+  describe('Cat not exist in store or invalid id', () => {
+    it(`should return status 404 on get cat which not exist`, () =>
       testRequest(app.getHttpServer())
-        .get('/cats/-1')
+        .get('/cats/11111111af4818325f87838d')
         .expect(HttpStatus.NOT_FOUND),
     );
 
-    it('should return status 404 on delete cat which not exist', () => {
+    it(`should return status 400 on get with invalid id`, () =>
+      testRequest(app.getHttpServer())
+        .get('/cats/-1')
+        .expect(HttpStatus.BAD_REQUEST)
+    );
+
+    it('should return status 404 on delete cat which not exist', () =>
+      testRequest(app.getHttpServer())
+        .delete('/cats/11111111af4818325f87838d')
+        .expect(HttpStatus.NOT_FOUND)
+    );
+
+    it('should return status 400 on delete with invalid id', () =>
       testRequest(app.getHttpServer())
         .delete('/cats/-1')
-        .expect(HttpStatus.NOT_FOUND);
-    });
+        .expect(HttpStatus.BAD_REQUEST)
+    );
 
     it(`should return status 404 update cat which not exist`, () =>
       testRequest(app.getHttpServer())
+        .put('/cats/11111111af4818325f87838d')
+        .send(updateCatDtoMock)
+        .expect(HttpStatus.NOT_FOUND)
+    );
+
+    it(`should return status 400 on update with invalid id`, () =>
+      testRequest(app.getHttpServer())
         .put('/cats/-1')
         .send(updateCatDtoMock)
-        .expect(HttpStatus.NOT_FOUND),
+        .expect(HttpStatus.BAD_REQUEST),
     );
   });
 
@@ -155,60 +211,59 @@ describe('E2E - CatsController', () => {
   });
 
   describe('Invalid or partial data on update cat', () => {
-    beforeAll(() => {
-      store = [createCatDtoMock];
-    });
+    it('should create new cat instance', () =>
+      testRequest(app.getHttpServer())
+        .post('/cats')
+        .send(createCatDtoMock)
+        .then(res => id = res.text)
+    );
 
     it('should return 400 on update request with empty body', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .expect(HttpStatus.BAD_REQUEST),
     );
 
     it('should return 200 on update request with undifined name', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send({ ...updateCatDtoMock, name: undefined })
         .expect(HttpStatus.OK),
     );
 
     it('should return 200 on update request with undifined age', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send({ ...updateCatDtoMock, age: undefined })
         .expect(HttpStatus.OK),
     );
 
     it('should return 200 on update request with undifined breed', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send({ ...updateCatDtoMock, breed: undefined })
         .expect(HttpStatus.OK),
     );
 
     it('should return 400 on update request with name number type', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send({ ...updateCatDtoMock, name: 1 })
         .expect(HttpStatus.BAD_REQUEST),
     );
 
     it('should return 400 on update request with age string type', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send({ ...updateCatDtoMock, age: '0' })
         .expect(HttpStatus.BAD_REQUEST),
     );
 
     it('should return 400 on update request with breed number type', () =>
       testRequest(app.getHttpServer())
-        .put('/cats/0')
+        .put('/cats/' + id)
         .send({ ...updateCatDtoMock, breed: 1 })
         .expect(HttpStatus.BAD_REQUEST),
     );
-  });
-
-  afterAll(async () => {
-    await app.close();
   });
 });

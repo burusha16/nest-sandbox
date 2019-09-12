@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { CatsModule } from './pages/cats/cats.module';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from './config/config.module';
+import { mongooseConfigProvider } from './core/database/database.providers';
+import { CatsModule } from './pages/cats/cats.module';
 
 @Module({
-  imports: [CatsModule, ConfigModule],
-  controllers: [AppController],
+  imports: [
+    ConfigModule,
+    MongooseModule.forRootAsync(mongooseConfigProvider),
+    CatsModule,
+  ]
 })
 export class AppModule {
 }

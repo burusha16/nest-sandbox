@@ -5,6 +5,9 @@
 # configs
 *.env
 
+# data
+/mongodb
+
 # Logs
 logs
 *.log

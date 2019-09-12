@@ -1,0 +1,4 @@
+DELETE http://localhost:3000/cats/-1
+Content-Type: application/json
+
+###

@@ -1,70 +1,174 @@
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Observable } from 'rxjs';
+import mockingoose from 'mockingoose';
+import * as mongoose from 'mongoose';
 import { CatsService } from '../../../src/pages/cats/cats.service';
 import { CreateCatDto } from '../../../src/pages/cats/shared/dto/create-cat.dto';
 import { ICat } from '../../../src/pages/cats/shared/interfaces/cat.interface';
-import { allCatsResultMock, createCatDtoMock, updateCatDtoMock } from '../../mocks/cats/contants';
+import { CATS_SCHEMA } from '../../../src/pages/cats/shared/schemas/cat.schema';
+import { allCatsResultMock, createCatDtoMock, testMongoId, updateCatDtoMock } from '../../mocks/cats/contants';
+import { ModelExecRejectMock } from '../../mocks/mongoose/model-exec-reject.mock';
+import { ModelExecResolveMock } from '../../mocks/mongoose/model-exec-resolve.mock';
+import { expectObservableIsEMPTY, expectObservableThrowErr } from '../../utils/expect-observable';
 
 describe('CatsService', () => {
   let service: CatsService;
-  const store: Array<ICat> = [...allCatsResultMock];
   const createData: CreateCatDto = createCatDtoMock;
-  let addedCatIndex!: number;
+  let catModel: mongoose.Model<ICat>;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    mockingoose.resetAll();
+    jest.resetAllMocks();
+    catModel = mongoose.model('Cat', CATS_SCHEMA);
+    const nestModule: TestingModule = await Test.createTestingModule({
       providers: [
         {
-          provide: 'CATS_STORE',
-          useValue: store,
+          provide: 'CatModel',
+          useValue: catModel,
         },
         CatsService,
       ],
     }).compile();
-
-    service = module.get<CatsService>(CatsService);
+    service = nestModule.get<CatsService>(CatsService);
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  it('should add cat to store', () => {
+  it('add: should create database model and call save method once', () => {
+    catModel.prototype.save = jest.fn();
+    service.add(createData);
+    expect(catModel.prototype.save).toBeCalledTimes(1);
+  });
+
+  it('add: should transfer data from DB model to response', (done) => {
+    jest.spyOn(catModel.prototype, 'save').mockImplementationOnce(() => Promise.resolve({id: testMongoId}));
     const result = service.add(createData);
-    expect(result).toBeInstanceOf(Observable);
-    result.subscribe(id => {
-      addedCatIndex = id;
-      expect(store[id]).toEqual({ ...createData, id });
+    result.subscribe(val => {
+      expect(val).toEqual(testMongoId);
+      done();
     });
   });
 
-  it('should find one cat from store', () => {
-    service.findOne(addedCatIndex.toString())
-      .subscribe(cat => expect(cat).toEqual({ ...createData, id: addedCatIndex }));
+  it('add: should throw 500 error on Promise reject', (done) => {
+    jest.spyOn(catModel.prototype, 'save').mockImplementationOnce(() => Promise.reject('error'));
+    const result = service.add(createData);
+    expectObservableThrowErr(result, InternalServerErrorException, done);
   });
 
-  it('should find all cats from store', () => {
-    service.findAll()
-      .subscribe(cats => {
-        expect(cats).toEqual([
-          ...allCatsResultMock,
-          {
-            ...createCatDtoMock,
-            id: addedCatIndex,
-          },
-        ]);
-      });
+  it('findOne: should call fundOne once', () => {
+    catModel.findOne = jest.fn();
+    try {
+      service.findOne(testMongoId);
+    } catch (err) {
+    }
+    expect(catModel.findOne).toBeCalledTimes(1);
+    expect(catModel.findOne).toBeCalledWith({ _id: testMongoId }, undefined, undefined, undefined);
   });
 
-  it(`should update cat with id ${addedCatIndex}`, () => {
-    const prevCatValue = store[addedCatIndex];
-    service.update(addedCatIndex.toString(), updateCatDtoMock);
-    expect(store[addedCatIndex]).toEqual({...prevCatValue, ...updateCatDtoMock});
+  it('findOne: should transfer data from DB model to response ', (done) => {
+    jest.spyOn(catModel, 'findOne').mockImplementationOnce((id) => new ModelExecResolveMock({...createData, _id: id._id}) as any);
+    const result = service.findOne(testMongoId);
+    result.subscribe(val => {
+      expect(val).toEqual({ ...createCatDtoMock, _id: testMongoId });
+      done();
+    });
   });
 
-  it(`should delete cat with id ${addedCatIndex}`, () => {
-    expect(store[addedCatIndex]).toBeDefined();
-    service.delete(addedCatIndex.toString());
-    expect(store[addedCatIndex]).toBeUndefined();
+  it('findOne: should throw 404 on null data', (done) => {
+    jest.spyOn(catModel, 'findOne').mockImplementationOnce(() => new ModelExecResolveMock(null) as any);
+    const result = service.findOne(testMongoId);
+    expectObservableThrowErr(result, NotFoundException, done);
+  });
+
+  it('findOne: should throw 500 on db error', (done) => {
+    jest.spyOn(catModel, 'findOne').mockImplementationOnce(() => new ModelExecRejectMock(null) as any);
+    const result = service.findOne(testMongoId);
+    expectObservableThrowErr(result, InternalServerErrorException, done);
+  });
+
+  it('findAll: should call find method once', () => {
+    catModel.find = jest.fn();
+    try {
+      service.findAll();
+    } catch (err) {
+    }
+    expect(catModel.find).toBeCalledTimes(1);
+  });
+
+  it('findAll: should return array of cats', (done) => {
+    jest.spyOn(catModel, 'find').mockImplementationOnce(() => new ModelExecResolveMock(allCatsResultMock) as any);
+    const result = service.findAll();
+    result.subscribe(val => {
+      expect(val).toEqual(allCatsResultMock);
+      done();
+    });
+  });
+
+  it('findAll: should return 500 on db model error', (done) => {
+    jest.spyOn(catModel, 'find').mockImplementationOnce(() => new ModelExecRejectMock(null) as any);
+    const result = service.findAll();
+    expectObservableThrowErr(result, InternalServerErrorException, done);
+  });
+
+  it(`update: should call update fn once`, () => {
+    catModel.findOneAndUpdate = jest.fn();
+    try {
+      service.update(testMongoId, updateCatDtoMock);
+    } catch (err) {
+    }
+    expect(catModel.findOneAndUpdate).toBeCalledTimes(1);
+    expect(catModel.findOneAndUpdate).toBeCalledWith({ _id: testMongoId }, updateCatDtoMock, undefined, undefined);
+  });
+
+  it(`update: should return EMPTY observable`, (done) => {
+    jest.spyOn(catModel, 'findOneAndUpdate').mockImplementationOnce(
+      (id) => new ModelExecResolveMock({ ...updateCatDtoMock, _id: id._id }) as any
+    );
+    const result = service.update(testMongoId, updateCatDtoMock);
+    expectObservableIsEMPTY(result, done);
+  });
+
+  it(`update: should return 404 if not find id`, (done) => {
+    jest.spyOn(catModel, 'findOneAndUpdate').mockImplementationOnce(() => new ModelExecResolveMock(null) as any);
+    const result = service.update(testMongoId, updateCatDtoMock);
+    expectObservableThrowErr(result, NotFoundException, done);
+  });
+
+  it(`update: should return 500 on db model error`, (done) => {
+    jest.spyOn(catModel, 'findOneAndUpdate').mockImplementationOnce(() => new ModelExecRejectMock(null) as any);
+    const result = service.update(testMongoId, updateCatDtoMock);
+    expectObservableThrowErr(result, InternalServerErrorException, done);
+  });
+
+  it(`delete: should call delete fn once`, () => {
+    catModel.findOneAndRemove = jest.fn();
+    try {
+      service.delete(testMongoId);
+    } catch (err) {
+    }
+    expect(catModel.findOneAndRemove).toBeCalledTimes(1);
+    expect(catModel.findOneAndRemove).toBeCalledWith({ _id: testMongoId }, undefined, undefined);
+  });
+
+  it(`delete: should return EMPTY observable`, (done) => {
+    jest.spyOn(catModel, 'findOneAndRemove').mockImplementationOnce(
+      (id) => new ModelExecResolveMock({ ...updateCatDtoMock, _id: id._id }) as any
+    );
+    const result = service.delete(testMongoId);
+    expectObservableIsEMPTY(result, done);
+  });
+
+  it(`delete: should return 404 if not find id`, (done) => {
+    jest.spyOn(catModel, 'findOneAndRemove').mockImplementationOnce(() => new ModelExecResolveMock(null) as any);
+    const result = service.delete(testMongoId);
+    expectObservableThrowErr(result, NotFoundException, done);
+  });
+
+  it(`delete: should return 500 on db model error`, (done) => {
+    jest.spyOn(catModel, 'findOneAndRemove').mockImplementationOnce(() => new ModelExecRejectMock(null) as any);
+    const result = service.delete(testMongoId);
+    expectObservableThrowErr(result, InternalServerErrorException, done);
   });
 });

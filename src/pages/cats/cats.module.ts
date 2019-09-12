@@ -1,9 +1,14 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { LoggerMiddleware } from '../../core/middlewares/logger.middleware';
 import { CatsController } from './cats.controller';
 import { CatsService } from './cats.service';
+import { CATS_SCHEMA } from './shared/schemas/cat.schema';
 
 @Module({
+  imports: [
+    MongooseModule.forFeature([{ name: 'Cat', schema: CATS_SCHEMA, collection: 'cats' }])
+  ],
   controllers: [CatsController],
   providers: [
     {
