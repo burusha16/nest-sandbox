@@ -1,9 +1,9 @@
 version: '3.7'
 
 services:
-  mongodb-test:
+  mongodb:
     image: mongo:latest
-    container_name: mongodb
+    container_name: mongodbcontainer
     restart: always
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
@@ -16,6 +16,21 @@ services:
       - APP_MONGO_PASS=${APP_MONGO_PASS}
       - APP_MONGO_DB=${APP_MONGO_DB}
     ports:
-      - 27017:27017
+      - "27017:27017"
     volumes:
-      - "./build/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro"
+      - ./build/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+  webapi:
+    build: .
+    command: npm run start:prod
+    container_name: webapicontainer
+    restart: always
+    volumes:
+      - .:/usr/app/
+      - /usr/app/node_modules
+      - ./src:/usr/app/
+    ports:
+      - "3000:3000"
+    links:
+      - mongodb
+    depends_on:
+      - mongodb
